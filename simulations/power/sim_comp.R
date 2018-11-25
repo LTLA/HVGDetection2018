@@ -9,10 +9,7 @@ nspikes <- 500 # For stability, for the time being.
 id <- rep(c("high", "low"), each=ngenes/2)
 collected.l <- collected.r <- collected.i <- vector("list", 20)
 for (it in seq_len(20)) { 
-    mus <- rbind(matrix(rep(c(20, 10), c(10, ncells-10)), nrow=ngenes/2, ncol=ncells, byrow=TRUE),
-                 matrix(rep(c(2, 0.1), c(10, ncells-10)), nrow=ngenes/2, ncol=ncells, byrow=TRUE))
-    disp <- computeDisp(mus)
-    
+    mus <- matrix(rep(c(10, 0.1), each=ngenes/2), nrow=ngenes, ncol=ncells)
     sim.genes <- matrix(rnbinom(ngenes*ncells, mu=mus, size=1/disp), nrow=ngenes, ncol=ncells)
     sim.spikes <- sampleCounts(ngenes=nspikes, nsamples=ncells, scaling=1)
     counts <- rbind(sim.genes, sim.spikes)

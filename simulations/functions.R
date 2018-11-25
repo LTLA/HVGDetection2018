@@ -31,7 +31,7 @@ detectHVGs <- function(counts, is.spike, chosen, threshold=0.05) {
     
     # Variance of log-counts
     lcounts <- log2(counts+1)
-    fit <- suppressWarnings(trendVar(lcounts, span=0.2, subset.row=is.spike))
+    fit <- suppressWarnings(trendVar(lcounts, loess.args=list(span=0.2), subset.row=is.spike))
     ref <- decomposeVar(lcounts, fit, test="f")
     raw.log <- assessDetection(ref$FDR, chosen, threshold)
     
