@@ -1,8 +1,8 @@
-description.aux
-description.bbl
-description.blg
-description.log
-description.pdf
+*.aux
+*.bbl
+*.blg
+*.log
+*.pdf
 
 results-simple/
 simulations/results_*
