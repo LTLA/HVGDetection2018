@@ -1,0 +1,106 @@
+\documentclass{article}
+\usepackage[margin=3cm]{geometry}
+\usepackage{natbib}
+\usepackage{amsmath}
+\usepackage{bm}
+
+\newcommand\code[1]{{\small\texttt{#1}}}
+
+% document begins here
+\begin{document}
+\vspace*{0.35in}
+
+% title goes here:
+\begin{flushleft}
+{\Large
+\textbf\newline{Comparing HVG detection methods in \textit{scran}}
+}
+\newline
+
+% authors go here:
+%\\
+Aaron T. L. Lun\textsuperscript{1,*}
+\\
+\bigskip
+\bf{1} Cancer Research UK Cambridge Institute, University of Cambridge, Li Ka Shing Centre, Robinson Way, Cambridge CB2 0RE, United Kingdom
+\\
+\bigskip
+* aaron.lun@cruk.cam.ac.uk
+
+\end{flushleft}
+
+\section{Overview}
+The \textit{scran} package contains several methods for quantifying variance and calling highly variable genes (HVGs).
+The \code{trendVar} method computes the variance of the normalized log-expression values;
+whereas the Brennecke method and \code{improvedCV2} operates on the CV$^2$ values calculated from the (normalized) counts.
+The difference in the metrics has some consequences when using either method for feature selection in scRNA-seq data analysis, which are discussed in this document.
+
+\section{Keeping all genes above the trend}
+The most relaxed approach to feature selection is to retain all genes with positive biological components.
+These genes are of potential interest as they exhibit some variation greater than that expected from technical noise.
+All methods are similar with respect to correctly identifying genes above the trend (see \texttt{simulations/power/above\_*}).
+This is not surprising as only accurate trend fitting is required for correct retention of genes, with no need to consider the variation around the trend.
+
+Retaining all positive biological components is the most inclusive approach to feature selection.
+It avoids throwing out genes with modest biological heterogeneity, e.g., for rare populations or subpopulations that are weakly separated.
+While they may not be informative individually, the presence of many such genes may be able to affect downstream analyses such as clustering.
+Inclusivity mitigates concerns over loss of structure when a more stringent threshold is used for feature selection.
+
+However, it also has the disadvantage of retaining more non-HVGs that have variances above the trend simply by chance.
+This increases the noise in downstream analyses compared to a more stringent threshold.
+We can mitigate this to some extent using denoising approaches such as PCA.
+In particular, \code{denoisePCA} uses the technical noise estimates to choose an appropriate number of PCs to retain.
+
+\section{Using a fixed threshold}
+A more stringent approach to feature selection is to retain all genes at a nominal FDR threshold.
+This is more statistically rigorous, controlling the proportion of non-HVGs in the retained set (and thus the noise in downstream analyses).
+HVG detection with \code{trendVar} yields a lower empirical FDR than the Brennecke method, though it still exceeds the nominal threshold (see \texttt{simulations/power/detect\_*}).
+This probably reflects the lack of type I error control for all methods when making normality assumptions (\texttt{simulations/alpha}).
+Conversely, the Brennecke method detects more true HVGs, though this is probably a result of its anticonservativeness rather than any improvement in power.
+
+The use of an FDR threshold was the original strategy for feature selection in \textit{simpleSingleCell}.
+This is no longer the case as FDR control across the set of HVGs was not strictly necessary.
+Unlike lists of DE genes, the set of HVGs is not directly used for interpretation of the results.
+Knowing the upper limit of the proportion of false discoveries in this set is not informative or actionable, 
+which is compounded by the inaccuracy of each method for error control.
+Moreover, control of the FDR usually increases type II errors that are arguably more detrimental to exploratory data analyses.
+It is difficult to gauge this effect, precisely because the type II error rate is unregulated in this approach.
+
+\section{Retaining the top $X$ genes}
+A popular approach to feature selection is to retain the top $X$ genes (usually the top 500-2000) by some metric of quantified variance.
+The most obvious metric is the $p$-value, though in all methods, the ratio of the total variance to the fitted value of the trend has the same ranking behaviour.
+The various methods exhibit similar performance in terms of the number of genes retained in the top set
+(compare the \code{Top} fields in \texttt{simulations/power/detect\_*}), with a few minor differences:
+\begin{itemize}
+\item \code{trendVar} is slightly better than the Brennecke method for detecting rare populations characterized by downregulation of genes.
+This is attributable to the fact that decreasing the mean increases the technical CV$^2$, making it harder to observe an increase in the biological CV$^2$.
+\item The Brennecke method is slightly better than \code{trendVar} at detecting HVGs that drive weak differences between small clusters.
+This is probably because a small fold change in expression between clusters has less effect on the variance after a log-transformation.
+\end{itemize}
+The differences become clearer with respect to abundance (see \texttt{simulations/sim\_comp.R}), where the Brennecke method strongly favours HVGs at low abundances.
+This reflects the increased variability of the sample CV$^2$ at low counts, even in the absence of any actual HVGs.
+In contrast, log-transformation with a pseudo-count squeezes the expression values together at low counts and reduces variability of the sample variance.
+This mitigates the effect of noise but also power for low-abundance HVGs.
+
+Taking the top set is a simple method of ensuring that there are enough informative genes for further analysis while reducing non-HVGs.
+However, the obvious question is: how large should $X$ be?
+An $X$ that is too small runs the risk of discarding informative genes.
+This is especially true if one aspect of heterogeneity is dominant, displacing genes corresponding to other sources of variation from the top set
+(even if those displaced genes were strong HVGs in their own right).
+Conversely, an $X$ that is too large would unnecessarily include noise from non-HVGs.
+Given the difficulty in making an educated choice here, we do not use the top $X$ approach in the \textit{simpleSingleCell} workflows.
+
+An additional issue with ranking by the $p$-value (or ratio of variances) is that it favours genes that are true HVGs but, at the same time, less biologically interesting.
+At a given ratio, it is possible to achieve the same $p$-value with a lower biological component when the technical noise is low.
+This means that two genes may be equally ranked even if one has low biological heterogeneity, provided it also has low technical noise.
+Inclusion of such genes is not likely to be problematic in terms of noise, as the total variance is minimal;
+however, it means that more informative genes are displaced from the top ranks.
+Perhaps ranking on the biological component directly would be more appropriate.
+
+\section{Further comments}
+From a practical perspective, we prefer computing the variance of log-values as this improves consistency with downstream procedures.
+Dimensionality reduction, clustering and visualization are all applied on the log-expression values.
+Selecting HVGs on a different metric may lead to inconsistencies if they are not also highly variable in the log-space.
+For example, an outlier-driven HVG selected with a large CV$^2$ looks underwhelming when visualized with log-expression values.
+
+\end{document}
