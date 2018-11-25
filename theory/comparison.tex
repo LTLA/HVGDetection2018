@@ -79,8 +79,8 @@ This is probably because a small fold change in expression between clusters has 
 \end{itemize}
 The differences become clearer with respect to abundance (see \texttt{simulations/sim\_comp.R}), where the Brennecke method strongly favours HVGs at low abundances.
 This reflects the increased variability of the sample CV$^2$ at low counts, even in the absence of any actual HVGs.
-In contrast, log-transformation with a pseudo-count squeezes the expression values together at low counts and reduces variability of the sample variance.
-This mitigates the effect of noise but also power for low-abundance HVGs.
+In contrast, the pseudo-count squeezes log-expression values together at low counts and reduces the variability of the variance.
+Which behaviour is preferable for ranking depends on the abundances of the features of interest.
 
 Taking the top set is a simple method of ensuring that there are enough informative genes for further analysis while reducing non-HVGs.
 However, the obvious question is: how large should $X$ be?
@@ -95,7 +95,7 @@ At a given ratio, it is possible to achieve the same $p$-value with a lower biol
 This means that two genes may be equally ranked even if one has low biological heterogeneity, provided it also has low technical noise.
 Inclusion of such genes is not likely to be problematic in terms of noise, as the total variance is minimal;
 however, it means that more informative genes are displaced from the top ranks.
-Perhaps ranking on the biological component directly would be more appropriate.
+Perhaps ranking on the biological component directly would avoid this problem, but while this would favour interesting genes, they would also be less likely to be genuine HVGs!
 
 \section{Further comments}
 From a practical perspective, we prefer computing the variance of log-values as this improves consistency with downstream procedures.
