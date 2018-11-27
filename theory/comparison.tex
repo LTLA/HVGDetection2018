@@ -31,9 +31,9 @@ Aaron T. L. Lun\textsuperscript{1,*}
 
 \section{Overview}
 The \textit{scran} package contains several methods for quantifying variance and calling highly variable genes (HVGs).
-The \code{trendVar} method computes the variance of the normalized log-expression values;
-whereas the Brennecke method and \code{improvedCV2} operates on the CV$^2$ values calculated from the (normalized) counts.
-The difference in the metrics has some consequences when using either method for feature selection in scRNA-seq data analysis, which are discussed in this document.
+The \code{trendVar} method computes the variance of the normalized log-expression values \citep{lun2016step};
+whereas the Brennecke method \citep{brennecke2013accounting} and \code{improvedCV2} operates on the CV$^2$ values calculated from the (normalized) counts.
+The difference in the metrics has some consequences when using either method for feature selection in scRNA-seq data analysis.
 
 \section{Keeping all genes above the trend}
 The most relaxed approach to feature selection is to retain all genes with positive biological components.
@@ -98,9 +98,21 @@ however, it means that more informative genes are displaced from the top ranks.
 Perhaps ranking on the biological component directly would avoid this problem, but while this would favour interesting genes, they would also be less likely to be genuine HVGs!
 
 \section{Further comments}
+The choice of HVG detection strategy has very similar trade-offs to the choice of filtering strategy in standard differential expression analyses.
+A more stringent method will improve power to resolve structure within the set of retained genes, by avoiding high-dimensional noise in genes with weaker variability.
+However, it also runs the risk of removing completely different structure in the set of genes that are discarded.
+It is not possible to distinguish between different types of structure on a per-gene basis,
+requiring us to share information between genes (e.g., via PCA) to improve feature selection.
+
+One comparative study of different HVG detection methods suggests that the \code{trendVar} method is one of the better methods \citep{yip2018evaluation}.
+However, their evidence is not compelling.
+
 From a practical perspective, we prefer computing the variance of log-values as this improves consistency with downstream procedures.
 Dimensionality reduction, clustering and visualization are all applied on the log-expression values.
 Selecting HVGs on a different metric may lead to inconsistencies if they are not also highly variable in the log-space.
 For example, an outlier-driven HVG selected with a large CV$^2$ looks underwhelming when visualized with log-expression values.
+
+\bibliography{ref}
+\bibliographystyle{plainnat}
 
 \end{document}
