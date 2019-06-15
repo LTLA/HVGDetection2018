@@ -87,7 +87,12 @@ However, the obvious question is: how large should $X$ be?
 An $X$ that is too small runs the risk of discarding informative genes.
 This is especially true if one aspect of heterogeneity is dominant, displacing genes corresponding to other sources of variation from the top set
 (even if those displaced genes were strong HVGs in their own right).
-Conversely, an $X$ that is too large would unnecessarily include noise from non-HVGs.
+For example, imagine that a data set contained several subpopulations, one of which was very different from the others.
+If we were to take the top 500 genes for further analysis, 
+it is possible that the top HVG set would be dominated by markers for the outlier subpopulation.
+This would compromise resolution of differences between the other subpopulations. 
+Conversely, an $X$ that is too large would unnecessarily include noise from non-HVGs, 
+possibly masking the biological structure.
 Given the difficulty in making an educated choice here, we do not use the top $X$ approach in the \textit{simpleSingleCell} workflows.
 
 An additional issue with ranking by the $p$-value (or ratio of variances) is that it favours genes that are true HVGs but, at the same time, less biologically interesting.
@@ -96,6 +101,26 @@ This means that two genes may be equally ranked even if one has low biological h
 Inclusion of such genes is not likely to be problematic in terms of noise, as the total variance is minimal;
 however, it means that more informative genes are displaced from the top ranks.
 Perhaps ranking on the biological component directly would avoid this problem, but while this would favour interesting genes, they would also be less likely to be genuine HVGs!
+
+\section{Recovering discarded heterogeneity}
+If too few HVGs are selected, the analysis may fail to resolve factors of variation that are not the most dominant in the data.
+One can recover such factors by repeating the entire analysis on each cluster of cells identified in the initial analysis.
+This allows characterization of further heterogeneity within each cluster that was masked in the overall analysis.
+Of course, this strategy is much more labour intensive than a single-pass analysis with sufficient HVGs.
+In addition to the obvious additional work to repeat the analysis,
+more care is required to deal with the consequences of overclustering at each step.
+\begin{itemize}
+\item Overclustering in the initial analysis splits subpopulations in a manner that does not reflect the major factors of variation within each subpopulation (as the HVGs capturing that subpopulation's internal variation are not used).
+Repeating the analysis on each of those weakly separated clusters risks defining redundant instances of the same cell types or states, which requires additional effort to reconcile during interpretation.
+\item Overclustering reduces the number of cells in each of the repeated analyses,
+as cells from the same type or state are split across two or more clusters in the initial analysis.
+This reduces the resolution available for characterizing heterogeneity.
+\item The alternative is to avoid overclustering by only considering strongly separated clusters in the initial step,
+and then permitting weakly separated clusters in the repeated step.
+However, if the clusters were strongly separated in the first place,
+using a small HVG set probably will not provide much benefit with respect to reducing noise.
+One might as well include more HVGs to provide an opportunity for the initial analysis to resolve further heterogeneity.
+\end{itemize}
 
 \section{Further comments}
 The choice of HVG detection strategy has very similar trade-offs to the choice of filtering strategy in standard differential expression analyses.
