@@ -1,0 +1,158 @@
+---
+title: Testing `fitTrendVar()` on real data
+author: Aaron Lun
+date: "`r Sys.Date()`"
+output:
+  BiocStyle::html_document
+---
+
+```{r, echo=FALSE}
+knitr::opts_chunk$set(error=FALSE, message=FALSE, warning=FALSE)
+```
+
+# Introduction
+
+This vignette is designed to test the `fitTrendVar()` function with respect to fitting on spike-in and endogenous genes.
+Evaluation will be based on how well the curve fits to the observed mass of points.
+
+```{r}
+library(scran)
+library(scRNAseq)
+library(scater)
+```
+
+We define a function to quickly compute the trend with and without spike.ins.
+
+```{r}
+FUN <- function(sce, has.spikes=TRUE, ...) {
+     sizeFactors(sce) <- scater::librarySizeFactors(sce)
+     if (has.spikes) {
+         sce <- computeSpikeFactors(sce, general.use=FALSE)
+     }
+     sce <- normalize(sce)
+
+     # Fitting a trend:
+     if (has.spikes) {
+         fit.spike <- fitTrendVar(sce) # defaults to using spike-ins
+     }
+     fit.endog <- fitTrendVar(sce, use.spikes=FALSE)
+
+     # Comparing the two trend fits:
+     plot(fit.endog$mean, fit.endog$var, xlab="Mean", ylab="Variance", ...)
+     curve(fit.endog$trend(x), add=TRUE, col="dodgerblue")
+     if (has.spikes) {
+         points(fit.spike$mean, fit.spike$var, col="red", pch=16)
+         curve(fit.spike$trend(x), add=TRUE, col="purple")
+     }
+}
+```
+
+# Lun data 
+
+First the 416B data:
+
+```{r}
+sce <- LunSpikeInData()
+
+sce <- calculateQCMetrics(sce, compact=TRUE)
+QC <- sce$scater_qc
+low.lib <- isOutlier(QC$all$log10_total_counts, type="lower", nmad=3)
+low.genes <- isOutlier(QC$all$log10_total_features_by_counts, type="lower", nmad=3)
+high.spike <- isOutlier(QC$feature_control_ERCC$pct_counts, type="higher", nmad=3)
+discard <- low.lib | low.genes | high.spike
+sce <- sce[,!discard]
+
+FUN(sce)
+```
+
+Now the trophoblast data:
+
+```{r}
+sce <- LunSpikeInData(which="tropho")
+
+sce <- calculateQCMetrics(sce, compact=TRUE)
+QC <- sce$scater_qc
+low.lib <- isOutlier(QC$all$log10_total_counts, type="lower", nmad=3)
+low.genes <- isOutlier(QC$all$log10_total_features_by_counts, type="lower", nmad=3)
+high.spike <- isOutlier(QC$feature_control_ERCC$pct_counts, type="higher", nmad=3)
+discard <- low.lib | low.genes | high.spike
+sce <- sce[,!discard]
+
+FUN(sce)
+```
+
+# Zeisel data
+
+Assuming quality control has already been performed:
+
+```{r}
+sce <- ZeiselBrainData()
+FUN(sce)
+```
+
+# 10X data
+
+Assuming that their cell calling was sufficient:
+
+```{r}
+library(BiocFileCache)
+bfc <- BiocFileCache(ask = FALSE)
+raw.path <- bfcrpath(bfc, file.path("http://cf.10xgenomics.com/samples",
+    "cell-exp/2.1.0/pbmc4k/pbmc4k_filtered_gene_bc_matrices.tar.gz"))
+untar(raw.path, exdir=file.path(tempdir(), "pbmc4k"))
+
+library(DropletUtils)
+fname <- file.path(tempdir(), "pbmc4k/filtered_gene_bc_matrices/GRCh38")
+sce <- read10xCounts(fname, col.names=TRUE)
+
+FUN(sce, has.spikes=FALSE)
+```
+
+# Tasic data
+
+Removing the bare minimum to get it to work:
+
+```{r}
+sce <- TasicBrainData()
+lost <- rowSums(is.na(counts(sce))) > 0
+sce <- sce[!lost,]
+
+sce <- calculateQCMetrics(sce, compact=TRUE)
+QC <- sce$scater_qc
+low.lib <- isOutlier(QC$all$log10_total_counts, type="lower", nmad=3)
+low.genes <- isOutlier(QC$all$log10_total_features_by_counts, type="lower", nmad=3)
+high.spike <- isOutlier(QC$feature_control_ERCC$pct_counts, type="higher", nmad=3)
+discard <- low.lib | low.genes | high.spike
+sce <- sce[,!discard]
+
+FUN(sce)
+```
+
+# Segerstolpe data
+
+Fitting separately for each patient, as each plate was pretty different.
+
+```{r}
+sce <- SegerstolpePancreasData()
+
+sce <- calculateQCMetrics(sce, compact=TRUE)
+QC <- sce$scater_qc
+low.lib <- isOutlier(QC$all$log10_total_counts, type="lower", nmad=3)
+low.genes <- isOutlier(QC$all$log10_total_features_by_counts, type="lower", nmad=3)
+high.spike <- isOutlier(QC$feature_control_ERCC$pct_counts, type="higher", nmad=3)
+discard <- low.lib | low.genes | high.spike
+sce <- sce[,!discard]
+
+for (i in unique(sce$individual)) {
+    tmp <- sce[,i==sce$individual]
+    tmp <- tmp[,colSums(counts(tmp)[isSpike(tmp),]) > 0]
+    FUN(tmp, main=i)
+}
+```
+
+# Session information
+
+```{r}
+sessionInfo()
+```
+
