@@ -25,17 +25,13 @@ We define a function to quickly compute the trend with and without spike.ins.
 
 ```{r}
 FUN <- function(sce, has.spikes=TRUE, ...) {
-     sizeFactors(sce) <- scater::librarySizeFactors(sce)
-     if (has.spikes) {
-         sce <- computeSpikeFactors(sce, general.use=FALSE)
-     }
-     sce <- normalize(sce)
+     sce <- logNormCounts(sce)
 
      # Fitting a trend:
      if (has.spikes) {
-         fit.spike <- fitTrendVar(sce) # defaults to using spike-ins
+         fit.spike <- metadata(modelGeneVarWithSpikes(sce, spikes=1))
      }
-     fit.endog <- fitTrendVar(sce, use.spikes=FALSE)
+     fit.endog <- metadata(modelGeneVar(sce))
 
      # Comparing the two trend fits:
      plot(fit.endog$mean, fit.endog$var, xlab="Mean", ylab="Variance", ...)
@@ -53,15 +49,9 @@ First the 416B data:
 
 ```{r}
 sce <- LunSpikeInData()
-
-sce <- calculateQCMetrics(sce, compact=TRUE)
-QC <- sce$scater_qc
-low.lib <- isOutlier(QC$all$log10_total_counts, type="lower", nmad=3)
-low.genes <- isOutlier(QC$all$log10_total_features_by_counts, type="lower", nmad=3)
-high.spike <- isOutlier(QC$feature_control_ERCC$pct_counts, type="higher", nmad=3)
-discard <- low.lib | low.genes | high.spike
-sce <- sce[,!discard]
-
+QC <- perCellQCMetrics(sce)
+chosen <- quickCellQC(QC, percent_subsets="altexps_ERCC_percent", nmads=3)
+sce <- sce[,!chosen$discard]
 FUN(sce)
 ```
 
@@ -69,15 +59,9 @@ Now the trophoblast data:
 
 ```{r}
 sce <- LunSpikeInData(which="tropho")
-
-sce <- calculateQCMetrics(sce, compact=TRUE)
-QC <- sce$scater_qc
-low.lib <- isOutlier(QC$all$log10_total_counts, type="lower", nmad=3)
-low.genes <- isOutlier(QC$all$log10_total_features_by_counts, type="lower", nmad=3)
-high.spike <- isOutlier(QC$feature_control_ERCC$pct_counts, type="higher", nmad=3)
-discard <- low.lib | low.genes | high.spike
-sce <- sce[,!discard]
-
+QC <- perCellQCMetrics(sce)
+chosen <- quickCellQC(QC, percent_subsets="altexps_ERCC_percent", nmads=3)
+sce <- sce[,!chosen$discard]
 FUN(sce)
 ```
 
@@ -114,17 +98,12 @@ Removing the bare minimum to get it to work:
 
 ```{r}
 sce <- TasicBrainData()
-lost <- rowSums(is.na(counts(sce))) > 0
-sce <- sce[!lost,]
+lost <- rowSums(is.na(counts(altExp(sce)))) > 0
+altExp(sce) <- altExp(sce)[!lost,]
 
-sce <- calculateQCMetrics(sce, compact=TRUE)
-QC <- sce$scater_qc
-low.lib <- isOutlier(QC$all$log10_total_counts, type="lower", nmad=3)
-low.genes <- isOutlier(QC$all$log10_total_features_by_counts, type="lower", nmad=3)
-high.spike <- isOutlier(QC$feature_control_ERCC$pct_counts, type="higher", nmad=3)
-discard <- low.lib | low.genes | high.spike
-sce <- sce[,!discard]
-
+QC <- perCellQCMetrics(sce)
+chosen <- quickCellQC(QC, percent_subsets="altexps_ERCC_percent", nmads=3)
+sce <- sce[,!chosen$discard]
 FUN(sce)
 ```
 
@@ -134,18 +113,13 @@ Fitting separately for each patient, as each plate was pretty different.
 
 ```{r}
 sce <- SegerstolpePancreasData()
-
-sce <- calculateQCMetrics(sce, compact=TRUE)
-QC <- sce$scater_qc
-low.lib <- isOutlier(QC$all$log10_total_counts, type="lower", nmad=3)
-low.genes <- isOutlier(QC$all$log10_total_features_by_counts, type="lower", nmad=3)
-high.spike <- isOutlier(QC$feature_control_ERCC$pct_counts, type="higher", nmad=3)
-discard <- low.lib | low.genes | high.spike
-sce <- sce[,!discard]
+QC <- perCellQCMetrics(sce)
+chosen <- quickCellQC(QC, percent_subsets="altexps_ERCC_percent", nmads=3)
+sce <- sce[,!chosen$discard]
 
 for (i in unique(sce$individual)) {
     tmp <- sce[,i==sce$individual]
-    tmp <- tmp[,colSums(counts(tmp)[isSpike(tmp),]) > 0]
+    tmp <- tmp[,colSums(counts(altExp(tmp))) > 0]
     FUN(tmp, main=i)
 }
 ```
