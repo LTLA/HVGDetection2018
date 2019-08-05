@@ -116,11 +116,9 @@ chosen <- quickCellQC(QC, percent_subsets="altexps_ERCC_percent", nmads=3)
 sce <- sce[,!chosen$discard]
 
 for (i in unique(sce$individual)) {
-    try({
-        tmp <- sce[,i==sce$individual]
-        tmp <- tmp[,colSums(counts(altExp(tmp))) > 0]
-        FUN(tmp, main=i)
-    })
+    tmp <- sce[,i==sce$individual]
+    tmp <- tmp[,colSums(counts(altExp(tmp))) > 0]
+    FUN(tmp, main=i)
 }
 ```
 

@@ -9,6 +9,7 @@ In `theory/`:
 In `real/`:
 
 - `fitTrendVar_test.Rmd` tests the behaviour of the `fitTrendVar()` on a range of scenarios.
+- `fitTrendCV2_test.Rmd` tests the behaviour of the `fitTrendCV2()` on a range of scenarios.
 
 In `simulations/`:
 
